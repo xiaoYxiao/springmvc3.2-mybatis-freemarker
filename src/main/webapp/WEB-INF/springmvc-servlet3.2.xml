@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc  http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+		http://www.springframework.org/schema/tx  http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+        http://www.springframework.org/schema/beans  http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+        http://www.springframework.org/schema/context  http://www.springframework.org/schema/context/spring-context-3.2.xsd
+        http://www.springframework.org/schema/aop  http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd "
+	>
+	<!--springmvc版本说明：
+	Spring3.1之前版本，开启注解式处理器支持的配置为：DefaultAnnotationHandlerMapping和AnnotationMethodHandlerAdapter。
+	Spring3.1之后版本，开始采用RequestMappingHandlerMapping和RequestMappingHandlerAdapter，同时上面两个被废弃；
+	所以，springmvc-servlet3.2.xml和springmvc-servlet3.0.xml随便一个配置都可以使用;
+	对应变更：
+	DefaultAnnotationHandlerMapping -> org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping 
+	AnnotationMethodHandlerAdapter -> org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter 
+	AnnotationMethodHandlerExceptionResolver -> ExceptionHandlerExceptionResolver
+	 -->
+	
+	
+	<!-- 自动搜索@Controller标注的类 -->
+	<!-- 
+	Spring MVC启动时的配置文件，包含组件扫描、url映射以及设置freemarker参数，让spring不扫描带有@Service 注解的类。
+	为什么要这样设置？因为servlet-context.xml与service-context.xml不是同时加载，如果不进行这样的设置，那么，
+	spring就会将所有带@Service 注解的类都扫描到容器中，等到加载service-context.xml的时候，会因为容器已经存在Service类，
+	使得cglib将不对Service进行代理，直接导致的结果就是在service-context中的事务配置不起作用，发生异常时，无法对数据进行回滚。
+	另外能够将REST URL解析为请求映射的是DefaultAnnotationHandlerMapping这个类，它在启动时，对Controller中所有标注了@RequestMapping注解的方法，
+	都放到了一个HandlerMapping对象中，当有请求时，就在这个对象中进行查找是否有与之匹配路径的处理方法，有则执行，没有就会输出一个Not Page Found警告信息。
+	 -->
+	<context:component-scan base-package="com.demo.user.controller" use-default-filters="false">
+	    <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+
+	<!-- 开启自动切面代理,可能会有需要 -->
+	<aop:aspectj-autoproxy />
+	
+	 <!--方法一： 默认的注解映射的支持 ,它会自动注册DefaultAnnotationHandlerMapping 与AnnotationMethodHandlerAdapter   
+	<mvc:annotation-driven />-->
+	<!--方法二：自己配置DefaultAnnotationHandlerMapping，AnnotationMethodHandlerAdapter
+	DefaultAnnotationHandlerMapping这个类是将所有标注了@RequestMapping注解的Controller类，都放到了一个HandlerMapping对象中，当有请求时，就在这个对象中进行查找是否有与之匹配的路径，AnnotationMethodHandlerAdapter是管理所有@RequestMapping注解的方法
+	 -->
+    <!-- 注解请求映射  -->
+    <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"/>        
+		<!-- 	<property name="interceptors">
+		    <list>  
+		     <ref bean="logNDCInteceptor"/>  日志拦截器 -->
+		    	<!-- <ref bean="myRequestHelperInteceptor"/>   RequestHelper拦截器--> 
+		    <!-- 	<ref bean="myPermissionsInteceptor"/>  权限拦截器--> 
+		    	<!-- <ref bean="myUserInfoInteceptor"/>  用户信息拦截器
+		    </list>        
+		</property>       
+	</bean>  	 -->
+	<!-- 第一种方法，配置处理器拦截器 
+	日志拦截器
+    <bean id="logNDCInteceptor" class="com.xxx.core.web.LogNDCInteceptor"/>-->
+    <!-- 权限拦截器
+    <bean id="myPermissionsInteceptor" class="com.xxx.userplatform.mvc.MyPermissionsInteceptor"></bean>-->
+    <!-- RequestHelper拦截器
+    <bean id="myRequestHelperInteceptor" class="com.xxx.core.web.MyRequestHelperInteceptor"></bean>-->
+    <!-- 用户信息拦截器
+    <bean id="myUserInfoInteceptor" class="com.xxx.userplatform.mvc.MyUserInfoInteceptor"></bean>-->
+	<!-- 第二种方法，配置处理器拦截器 -->
+	<mvc:interceptors>
+		<bean class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor" /><!-- 更改语言环境时，一个'locale'的请求参数发送  -->
+		<bean class="com.demo.common.util.MyFirstInterceptor" /><!-- 我的第一个拦截器，测试使用 -->
+	</mvc:interceptors>
+	
+	<bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+		<property name="messageConverters">  
+			<list>  
+				<ref bean="byteArray_hmc" />  
+				<ref bean="string_hmc" />  
+				<ref bean="resource_hmc" />  
+				<ref bean="source_hmc" />  
+				<ref bean="xmlAwareForm_hmc" />  
+				<ref bean="jaxb2RootElement_hmc" />  
+				<ref bean="jackson_hmc" />  
+			</list>  
+		</property>  
+	</bean>  
+	<bean id="byteArray_hmc" class="org.springframework.http.converter.ByteArrayHttpMessageConverter" /><!-- 处理.. -->
+	<bean id="string_hmc" class="org.springframework.http.converter.StringHttpMessageConverter" /><!-- 处理.. -->
+	<bean id="resource_hmc" class="org.springframework.http.converter.ResourceHttpMessageConverter" /><!-- 处理.. -->
+	<bean id="source_hmc" class="org.springframework.http.converter.xml.SourceHttpMessageConverter" /><!-- 处理.. -->
+	<bean id="xmlAwareForm_hmc" class="org.springframework.http.converter.xml.XmlAwareFormHttpMessageConverter" /><!-- 处理.. -->
+	<bean id="jaxb2RootElement_hmc" class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter" /><!-- 处理.. -->
+	<bean id="jackson_hmc" class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter" /><!-- 处理json-->
+	
+	<!-- 总错误处理-->  
+	<bean id="exceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">  
+	    <property name="exceptionMappings">
+			<props>
+				<!-- 这里的errorPage同样应用viewResolver的前缀、后缀匹配 -->
+				<prop key="java.lang.Exception">errorPage</prop>
+			</props>
+		</property>
+	</bean> 
+
+	
+	<!-- 定义 FreeMaker Bean 包装器 -->
+	<!-- 如果你阅读过程序开发指南， 那么在技术上你就明白了， 数据模型是
+		freemarker.template.TemplateModel 对象的树。通常（非必须）由自动包装
+		（包含）普通Java 对象到TemplateModel 对象方式的数据模型的构建。进行对象包装
+		的对象是对象包装器，当你配置FreeMarker 时它就被指定了。FreeMarker 本身有一部分即
+		装即用的对象包装器实现， 也许它们当中使用最多的一个就是
+		freemarker.ext.beans.BeansWrapper（可以阅读程序开发指南/其它/Bean 的
+		包装部分获取更多内容，译者注）。如果你使用了它的实例作为对象包装器，那么你向数据
+		模型中放置的java.util.Map 将会作为一个方法， 那么你可以在模板中编写
+		myMap(myKey)，在内部就会调用Map.get(myKey)方法。对myKey 的类型没有严
+		格的限制，正如Map.get(Object key)也没有这样的限制。如果myKey 的值由
+		BeansWrapper 来包装或其他支持解包的对象包装器，或在模板中是以文字形式给出的，
+		那么值在真正调用Map.get(Object key)方法之前将会被自动解包成普通Java 对象，
+		所以它不会和TemplateModel 一起调用。 -->
+	<bean id="freemarkerBeansWrapper" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+		<property name="staticMethod">
+			<value>freemarker.ext.beans.BeansWrapper.getDefaultInstance</value>
+		</property>
+	</bean>
+	
+    <!-- 定义跳转的文件的前后缀 ，视图模式配置;这里的配置我的理解是自动给后面action的方法return的字符串加上前缀和后缀，变成一个 可用的url地址 -->
+    <!-- 多视图处理器,spring 3.0以上已经集成了freemarker(模板渲染展示图，使用FreeMarker能够很方便的动态生成静态页面) -->
+	<bean id="ftlviewResolver" class="org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver">
+		<property name="cache" value="true"/>
+		<property name="prefix" value=""/>
+		<property name="suffix" value=".ftl"/>
+		<property name="contentType" value="text/html;charset=UTF-8"/>
+		<property name="exposeSpringMacroHelpers" value="true"/><!-- 宏命令的支持  -->
+		<property name="viewClass" value="org.springframework.web.servlet.view.freemarker.FreeMarkerView"/>
+		<property name="requestContextAttribute" value="request"/><!-- 应用上下文 -->
+		<property name="exposeRequestAttributes" value="true"/><!-- 允许访问请求属性 -->
+		<property name="exposeSessionAttributes" value="true"/><!-- 允许访问回话属性 -->
+		<property name="order" value="0"></property>
+		<property name="attributesMap">
+			<map key-type="java.lang.String" value-type="freemarker.template.TemplateMethodModel">
+				<entry key="statics">
+					<bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+						<property name="targetObject">
+							<ref local="freemarkerBeansWrapper"/>
+						</property>
+						<property name="targetMethod">
+							<value>getStaticModels</value>
+						</property>
+					</bean>
+				</entry>
+				<entry key="enums">
+					<bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+						<property name="targetObject">
+							<ref local="freemarkerBeansWrapper"/>
+						</property>
+						<property name="targetMethod">
+							<value>getEnumModels</value>
+						</property>
+					</bean>
+				</entry>
+			</map>
+		</property>
+	</bean>
+
+	<!-- freemarker config b、FreemMarker环境配置-->
+    <bean id="freeMarkerConfigurer" class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer"> 
+        <!--视图资源位置-->
+		<property name="templateLoaderPaths">
+			<list>
+				<value>/WEB-INF/ftl/</value>
+				<value>/WEB-INF/common/</value><!-- 共用页面 -->
+				<value>/WEB-INF/templates/</value><!--模板页面可以转为xml -->
+			</list>
+		</property>
+        <property name="defaultEncoding" value="UTF-8" /> 
+        <property name="freemarkerSettings"> 
+            <props> 
+                <prop key="template_update_delay">5</prop><!-- 每隔5秒更新模板 --> 
+                <prop key="locale">zh_CN</prop> 
+                <prop key="boolean_format">true,false</prop> 
+                <prop key="datetime_format">yyyy-MM-dd HH:mm:ss</prop> 
+                <prop key="date_format">yyyy-MM-dd</prop>
+                <prop key="time_format">HH:mm:ss</prop>
+                 <!-- 可以满足一般需要。默认情况变量为null则替换为空字符串，如果需要自定义，写上${empty!"EmptyValue of fbysss"}的形式即可  -->
+                <prop key="classic_compatible">true</prop>
+                
+                <!-- 如果Bean是或者其某个属性是MAP类型，在ftl模板中只能当作freemarker的哈希表使用，且map的key应该为字符串。
+					如果想将bean在freemarker模板中可以像java中一样使用，则要将object_wrapper配置为freemarker.ext.beans.BeansWrapper -->
+                <prop key="object_wrapper">freemarker.ext.beans.BeansWrapper</prop>
+            </props> 
+        </property> 
+        <!-- 全局变量部分 -->
+		<property name="freemarkerVariables">
+			<map>
+				<entry key="BasePath" value="/springmvc3.2mybatisfreemarker" />
+				<!-- 应用于b2c前台url在静态环境和开发环境中切换 200生产环境  500开发环境-->
+				<entry key="model" value="200" />
+				<entry key="xml_escape" value-ref="fmXmlEscape" />
+			</map>
+		</property>
+    </bean>   
+    <bean id="fmXmlEscape" class="freemarker.template.utility.XmlEscape"/>
+    
+	<!-- 配置对文件上传的支持 -->
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="defaultEncoding" value="utf-8" /> <!-- 默认编码 -->  
+	    <property name="maxUploadSize" value="20971520"/>  
+     	<property name="resolveLazily" value="true"/>  <!--resolveLazily属性启用是为了推迟文件解析，以便在controller 中捕获文件大小异常-->     
+	</bean>
+
+ 	<!-- 启用默认配置 ：配置Fastjson支持，这里是配置fastjson替换springmvc本身自带的Jackson
+    <mvc:annotation-driven>
+        <mvc:message-converters register-defaults="true">
+            <bean class="com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter">
+                <property name="supportedMediaTypes">
+                    <list>
+                        <value>text/html;charset=UTF-8</value>
+                        <value>application/json</value>
+                    </list>
+                </property>
+                <property name="features">
+                    <list>
+                        <value>WriteMapNullValue</value>
+                        <value>QuoteFieldNames</value>
+                    </list>
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+    -->
+   
+   	<!-- 允许对静态资源文件的访问,主要是针对访问路径（/、/*）
+	<mvc:default-servlet-handler/>--> 
+</beans>
+
+
+
